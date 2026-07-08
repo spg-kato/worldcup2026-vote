@@ -203,14 +203,6 @@ input[type=text]:focus{border-color:var(--gold)}
     <div class="div"></div>
     <div id="all-votes-list"></div>
   </div>
-  <div class="admin-card">
-    <h3 style="margin-bottom:12px">決勝カード設定</h3>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <input type="text" id="f1-input" placeholder="チーム1（例：フランス）" style="padding:10px 12px;font-size:13px">
-      <input type="text" id="f2-input" placeholder="チーム2" style="padding:10px 12px;font-size:13px">
-    </div>
-    <button onclick="saveFinalists()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px" id="finalist-btn">決勝カードを設定</button>
-  </div>
   <!-- 結果入力・的中者計算 -->
   <div class="admin-card">
     <h3 style="margin-bottom:12px">🏆 結果入力・的中者計算</h3>
@@ -232,6 +224,15 @@ input[type=text]:focus{border-color:var(--gold)}
       <button class="btn-admin" id="score-close-btn" onclick="toggleScoreClose()" style="background:var(--red);color:#fff">🔒 締め切る</button>
     </div>
     <div id="score-votes-list"></div>
+  </div>
+  <div class="admin-card">
+    <h3 style="margin-bottom:12px">決勝カード設定</h3>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:10px">⚠️ 決勝の2チームが決まってから設定してください</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="f1-input" placeholder="チーム1（例：フランス）" style="padding:10px 12px;font-size:13px">
+      <input type="text" id="f2-input" placeholder="チーム2" style="padding:10px 12px;font-size:13px">
+    </div>
+    <button onclick="saveFinalists()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px" id="finalist-btn">決勝カードを設定</button>
   </div>
 </div>
 
