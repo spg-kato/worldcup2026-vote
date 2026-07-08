@@ -509,7 +509,11 @@ function renderVotes(){
     document.getElementById('my-votes').innerHTML=mine.length===0?'':`
       <div style="margin-top:24px">
         <label class="lbl">あなたの投票履歴（${myName}）</label>
-        ${mine.map((v,i)=>`
+        ${mine.map((v,i)=>{
+          const comboKey=v.champion+'|'+v.runnerUp;
+          const comboUnits=arr.filter(x=>x.champion===v.champion&&x.runnerUp===v.runnerUp).reduce((s,x)=>s+x.units,0);
+          const odds=totalUnits>0?(totalUnits/comboUnits).toFixed(1):'--';
+          return`
           <div class="vrow">
             <div style="display:flex;justify-content:space-between;align-items:flex-start">
               <div><div class="vname">#${i+1} ${v.championFlag}${v.champion}優勝</div>
@@ -518,8 +522,12 @@ function renderVotes(){
                 <div class="spg">${v.units}口</div>
                 ${!isClosed?`<button class="del-btn" onclick="deleteVote('${v._key}')">取消</button>`:''}
               </div>
-            </div><div class="vts">${v.ts}</div>
-          </div>`).join('')}
+            </div>
+            <div style="margin-top:5px;display:flex;justify-content:space-between;align-items:center">
+              <div style="font-size:11px;color:var(--sub)">${v.ts}</div>
+              <div style="font-size:12px;font-weight:800;color:#1a7a4a">現在倍率 ${odds}倍</div>
+            </div>
+          </div>`;}).join('')}
         <div style="margin-top:10px;font-size:12px;color:#aaa">合計 <span class="spg">${mine.reduce((s,v)=>s+v.units,0)}口 / ${mine.reduce((s,v)=>s+v.units*500,0).toLocaleString()}SPG</span></div>
       </div>`;
   }
