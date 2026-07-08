@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>W杯2026 優勝予想大会</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+:root{--ink:#0B1F3A;--gold:#F5A300;--green:#00A85A;--red:#E5283C;--muted:#6B7A90}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;background:var(--ink);color:#fff;min-height:100vh;padding-bottom:60px}
+.hdr{background:linear-gradient(135deg,#0B1F3A,#1a3a6b 60%,#0d4a2a);padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.eyebrow{font-size:10px;letter-spacing:.22em;color:#7fe3b0;text-transform:uppercase;font-weight:700;margin-bottom:4px}
+.hdr h1{font-size:22px;font-weight:800}
+.hdr p{font-size:12px;color:#aebfd6;margin-top:4px}
+.tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.1)}
+.tab{flex:1;padding:13px 4px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:transparent;color:#888;border-bottom:2px solid transparent;transition:.15s}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);background:rgba(245,163,0,.08)}
+.body{padding:16px}
+.lbl{font-size:11px;color:#aaa;margin-bottom:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;display:block}
+input[type=text]{width:100%;padding:13px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;font-size:16px;outline:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.team-card{padding:14px 8px;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);cursor:pointer;text-align:center;transition:.15s;width:100%}
+.team-card.sel-champ{border-color:var(--gold);background:rgba(245,163,0,.15)}
+.team-card.sel-ru{border-color:var(--green);background:rgba(0,168,90,.15)}
+.flag{font-size:30px;margin-bottom:4px}
+.tname{font-size:13px;font-weight:700}
+.trank{font-size:10px;color:#888;margin-top:2px}
+.shead{font-size:11px;font-weight:800;margin-bottom:8px;letter-spacing:.04em}
+.shead.left{color:#7fe3b0}.shead.right{color:#60a0ff}
+.counter{display:flex;align-items:center;gap:12px;justify-content:center;margin:12px 0}
+.cnt-btn{width:42px;height:42px;border-radius:21px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cnt-val{font-size:28px;font-weight:800;min-width:40px;text-align:center}
+.spg{color:var(--gold);font-weight:700}
+.preview{background:rgba(245,163,0,.08);border:1px solid rgba(245,163,0,.25);border-radius:12px;padding:14px;margin-bottom:16px}
+.preview-lbl{font-size:11px;color:var(--gold);font-weight:700;margin-bottom:8px}
+.btn{width:100%;padding:16px;border-radius:12px;border:none;font-size:16px;font-weight:800;cursor:pointer;transition:.2s;margin-top:4px}
+.btn-gold{background:var(--gold);color:#000}
+.btn-gold:disabled{background:rgba(255,255,255,.08);color:#555;cursor:not-allowed}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:disabled{background:rgba(255,255,255,.08);color:#555;cursor:not-allowed}
+.btn-admin{padding:9px 16px;border-radius:8px;border:none;font-weight:700;cursor:pointer;font-size:13px}
+.closed-box{background:rgba(229,40,60,.12);border:1px solid rgba(229,40,60,.35);border-radius:12px;padding:28px;text-align:center}
+.closed-box .icon{font-size:36px;margin-bottom:10px}
+.closed-box .msg{font-size:17px;font-weight:800;color:#ff6b7a}
+.admin-card{background:rgba(255,255,255,.05);border-radius:12px;padding:16px;margin-bottom:14px}
+.admin-card h3{font-size:14px;font-weight:800;margin-bottom:4px}
+.admin-card .meta{font-size:12px;color:#aaa}
+.vrow{border-top:1px solid rgba(255,255,255,.08);padding-top:10px;margin-top:10px}
+.vname{font-weight:700;font-size:13px}
+.vdetail{font-size:12px;color:#ddd}
+.vts{font-size:10px;color:#555}
+.waiting{text-align:center;padding:48px 16px;color:#aaa}
+.waiting .icon{font-size:48px;margin-bottom:16px}
+.waiting h2{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,168,90,.97);color:#fff;padding:12px 22px;border-radius:20px;font-size:14px;font-weight:700;z-index:200;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4);opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.div{margin:16px 0;border-top:1px solid rgba(255,255,255,.08)}
+.final-card{background:rgba(245,163,0,.1);border:1px solid rgba(245,163,0,.25);border-radius:12px;padding:16px;margin-bottom:20px;text-align:center}
+.final-card .lbl2{font-size:11px;color:var(--gold);font-weight:700;letter-spacing:.1em;margin-bottom:8px}
+.final-card .fteams{font-size:20px;font-weight:800}
+.score-wrap{display:flex;align-items:center;gap:16px;justify-content:center;margin-top:12px}
+.score-team{text-align:center}
+.score-team-name{font-size:13px;font-weight:700;margin-bottom:10px}
+.score-sep{font-size:24px;color:#aaa;font-weight:800;margin-top:28px}
+.tally{background:rgba(0,168,90,.08);border:1px solid rgba(0,168,90,.2);border-radius:10px;padding:12px;margin-top:12px}
+.tally-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.tally-lbl{font-size:11px;color:#7fe3b0;font-weight:700;margin-bottom:8px}
+.pot{background:rgba(245,163,0,.15);border:1px solid rgba(245,163,0,.3);border-radius:10px;padding:12px;margin-bottom:12px;text-align:center}
+.pot-num{font-size:22px;font-weight:800;color:var(--gold)}
+.pot-lbl{font-size:11px;color:#aaa;margin-top:2px}
+.deadline-box{background:rgba(245,163,0,.1);border:1px solid rgba(245,163,0,.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;font-weight:700;color:var(--gold);text-align:center}
+.deadline-expired{background:rgba(229,40,60,.12);border:1px solid rgba(229,40,60,.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;font-weight:700;color:#ff6b7a;text-align:center}
+.del-btn{background:none;border:none;color:#E5283C;font-size:11px;font-weight:700;cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid rgba(229,40,60,.4)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="eyebrow">FIFA World Cup 2026 · 社内予想大会</div>
+  <h1>🏆 優勝予想 連単</h1>
+  <p>1口 500SPG ／ 複数投票OK ／ 連単16通り</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('vote')">🎯 連単予想</button>
+  <button class="tab" onclick="showTab('score')">📊 決勝スコア</button>
+  <button class="tab" onclick="showTab('admin')">⚙️ 管理</button>
+</div>
+
+<!-- VOTE TAB -->
+<div id="tab-vote" class="body">
+  <div id="closed-msg" style="display:none" class="closed-box">
+    <div class="icon">🔒</div>
+    <div class="msg">投票は締め切られました</div>
+    <p style="font-size:12px;color:#aaa;margin-top:6px">結果発表をお待ちください</p>
+  </div>
+  <div id="vote-form">
+    <div id="deadline-banner" class="deadline-box">⏰ 受付締め切り：7月10日（金）04:00まで</div>
+    <div style="margin-bottom:20px">
+      <label class="lbl">苗字</label>
+      <input type="text" id="v-name" placeholder="例：田中">
+    </div>
+    <div style="margin-bottom:8px">
+      <label class="lbl">優勝チームを選ぶ</label>
+      <p class="shead left">◀ 左ブラケット（QF①②）</p>
+      <div class="grid" id="left-teams"></div>
+    </div>
+    <div style="margin-bottom:20px">
+      <p class="shead right" style="margin-top:10px">▶ 右ブラケット（QF③④）</p>
+      <div class="grid" id="right-teams"></div>
+    </div>
+    <div id="ru-section" style="display:none;margin-bottom:20px">
+      <label class="lbl">準優勝チームを選ぶ</label>
+      <p id="ru-hint" style="font-size:11px;color:#aaa;margin-bottom:8px"></p>
+      <div class="grid" id="ru-teams"></div>
+    </div>
+    <div id="units-section" style="display:none;margin-bottom:20px">
+      <label class="lbl">口数（1口 = 500SPG）</label>
+      <div class="counter">
+        <button class="cnt-btn" onclick="changeUnits(-1)">−</button>
+        <div class="cnt-val" id="units-val">1</div>
+        <button class="cnt-btn" onclick="changeUnits(1)">＋</button>
+        <span class="spg" id="spg-val">500 SPG</span>
+      </div>
+    </div>
+    <div id="preview" style="display:none" class="preview">
+      <div class="preview-lbl">📋 投票内容の確認</div>
+      <div id="preview-content"></div>
+    </div>
+    <button class="btn btn-gold" id="submit-btn" onclick="submitVote()" disabled>投票する 🎯</button>
+    <div id="my-votes"></div>
+  </div>
+</div>
+
+<!-- SCORE TAB -->
+<div id="tab-score" class="body" style="display:none">
+  <div id="score-waiting" class="waiting">
+    <div class="icon">⏳</div>
+    <h2>決勝カード設定待ち</h2>
+    <p>決勝の2チームが決まり次第<br>管理者が開放します</p>
+  </div>
+  <div id="score-closed-msg" style="display:none" class="closed-box">
+    <div class="icon">🔒</div>
+    <div class="msg">スコア予想は締め切られました</div>
+  </div>
+  <div id="score-form" style="display:none">
+    <div class="final-card">
+      <div class="lbl2">🏆 決勝カード</div>
+      <div class="fteams" id="final-teams-display"></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="lbl">苗字</label>
+      <input type="text" id="s-name" placeholder="例：田中">
+    </div>
+    <label class="lbl">最終スコア予想（延長・PK込み）</label>
+    <div class="score-wrap">
+      <div class="score-team">
+        <div class="score-team-name" id="sf1-name">-</div>
+        <div class="counter">
+          <button class="cnt-btn" onclick="changeScore(1,-1)">−</button>
+          <div class="cnt-val" id="s1-val">0</div>
+          <button class="cnt-btn" onclick="changeScore(1,1)">＋</button>
+        </div>
+      </div>
+      <div class="score-sep">−</div>
+      <div class="score-team">
+        <div class="score-team-name" id="sf2-name">-</div>
+        <div class="counter">
+          <button class="cnt-btn" onclick="changeScore(2,-1)">−</button>
+          <div class="cnt-val" id="s2-val">0</div>
+          <button class="cnt-btn" onclick="changeScore(2,1)">＋</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="submitScore()">スコアを予想する 📊</button>
+  </div>
+</div>
+
+<!-- ADMIN TAB -->
+<div id="tab-admin" class="body" style="display:none">
+  <div style="font-size:15px;font-weight:800;margin-bottom:16px">⚙️ 管理者パネル</div>
+  <div class="admin-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <h3>連単予想</h3>
+        <div class="meta" id="vote-summary">0件 / 0口 / 0SPG</div>
+      </div>
+      <button class="btn-admin" id="close-btn" onclick="toggleClose()" style="background:var(--red);color:#fff">🔒 締め切る</button>
+    </div>
+    <div class="pot" id="pot-box" style="display:none">
+      <div class="pot-num" id="pot-val">0 SPG</div>
+      <div class="pot-lbl">総ポット（全口数合計）</div>
+    </div>
+    <div class="tally" id="tally-section" style="display:none">
+      <div class="tally-lbl">📊 組み合わせ別集計</div>
+      <div id="tally-list"></div>
+    </div>
+    <div class="div"></div>
+    <div id="all-votes-list"></div>
+  </div>
+  <div class="admin-card">
+    <h3 style="margin-bottom:12px">決勝カード設定</h3>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="f1-input" placeholder="チーム1（例：フランス）" style="padding:10px 12px;font-size:13px">
+      <input type="text" id="f2-input" placeholder="チーム2" style="padding:10px 12px;font-size:13px">
+    </div>
+    <button onclick="saveFinalists()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px" id="finalist-btn">決勝カードを設定</button>
+  </div>
+  <div class="admin-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <h3>スコア予想</h3>
+        <div class="meta" id="score-summary">0件</div>
+      </div>
+      <button class="btn-admin" id="score-close-btn" onclick="toggleScoreClose()" style="background:var(--red);color:#fff">🔒 締め切る</button>
+    </div>
+    <div id="score-votes-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyDckXu2L-Mg0mQwxf3ip8MtLbjvY4Rj1CI",
+  authDomain:"worldcup2026vote.firebaseapp.com",
+  databaseURL:"https://worldcup2026vote-default-rtdb.firebaseio.com",
+  projectId:"worldcup2026vote",
+  storageBucket:"worldcup2026vote.firebasestorage.app",
+  messagingSenderId:"141048026675",
+  appId:"1:141048026675:web:9fa6d6e699ea3c519ef546"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+const LEFT=[
+  {name:"フランス",flag:"🇫🇷",rank:1},
+  {name:"モロッコ",flag:"🇲🇦",rank:6},
+  {name:"スペイン",flag:"🇪🇸",rank:3},
+  {name:"ベルギー",flag:"🇧🇪",rank:9},
+];
+const RIGHT=[
+  {name:"ノルウェー",flag:"🇳🇴",rank:21},
+  {name:"イングランド",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",rank:4},
+  {name:"アルゼンチン",flag:"🇦🇷",rank:2},
+  {name:"スイス",flag:"🇨🇭",rank:15},
+];
+const ALL=[...LEFT,...RIGHT];
+
+let champion=null,runnerUp=null,units=1,score1=0,score2=0;
+let isClosed=false,scoreClosed=false,finalist1="",finalist2="";
+let allVotes={},scoreVoteData={};
+
+function renderTeams(){
+  ['left-teams','right-teams'].forEach((id,idx)=>{
+    const teams=idx===0?LEFT:RIGHT;
+    document.getElementById(id).innerHTML=teams.map(t=>
+      `<button class="team-card" onclick="selectChampion('${t.name}')" id="champ-${t.name}">
+        <div class="flag">${t.flag}</div><div class="tname">${t.name}</div><div class="trank">世界${t.rank}位</div>
+      </button>`
+    ).join('');
+  });
+}
+
+function selectChampion(name){
+  champion=ALL.find(t=>t.name===name);runnerUp=null;
+  ALL.forEach(t=>{const el=document.getElementById('champ-'+t.name);if(el)el.className='team-card'+(t.name===name?' sel-champ':'');});
+  renderRuOptions();updateSubmitState();
+}
+
+function renderRuOptions(){
+  if(!champion)return;
+  const isLeft=LEFT.find(t=>t.name===champion.name);
+  const options=isLeft?RIGHT:LEFT;
+  document.getElementById('ru-section').style.display='';
+  document.getElementById('ru-hint').textContent=champion.flag+' '+champion.name+' と決勝で対戦できるチームのみ';
+  document.getElementById('ru-teams').innerHTML=options.map(t=>
+    `<button class="team-card" onclick="selectRu('${t.name}')" id="ru-${t.name}">
+      <div class="flag">${t.flag}</div><div class="tname">${t.name}</div><div class="trank">世界${t.rank}位</div>
+    </button>`
+  ).join('');
+}
+
+function selectRu(name){
+  runnerUp=ALL.find(t=>t.name===name);
+  const isLeft=LEFT.find(t=>t.name===champion.name);
+  (isLeft?RIGHT:LEFT).forEach(t=>{const el=document.getElementById('ru-'+t.name);if(el)el.className='team-card'+(t.name===name?' sel-ru':'');});
+  document.getElementById('units-section').style.display='';
+  updatePreview();updateSubmitState();
+}
+
+function changeUnits(d){
+  units=Math.max(1,units+d);
+  document.getElementById('units-val').textContent=units;
+  document.getElementById('spg-val').textContent=(units*500).toLocaleString()+' SPG';
+  updatePreview();
+}
+
+function changeScore(which,d){
+  if(which===1){score1=Math.max(0,score1+d);document.getElementById('s1-val').textContent=score1;}
+  else{score2=Math.max(0,score2+d);document.getElementById('s2-val').textContent=score2;}
+}
+
+function updatePreview(){
+  if(!champion||!runnerUp)return;
+  document.getElementById('preview').style.display='';
+  document.getElementById('preview-content').innerHTML=
+    `<div style="font-size:15px;font-weight:700;margin-bottom:4px">優勝：${champion.flag} ${champion.name}</div>
+     <div style="font-size:15px;font-weight:700;margin-bottom:6px">準優勝：${runnerUp.flag} ${runnerUp.name}</div>
+     <div style="font-size:12px;color:#aaa">${units}口 ／ ${(units*500).toLocaleString()} SPG</div>`;
+}
+
+function updateSubmitState(){
+  const name=document.getElementById('v-name').value.trim();
+  document.getElementById('submit-btn').disabled=!name||!champion||!runnerUp;
+}
+document.getElementById('v-name').addEventListener('input',()=>{updateSubmitState();renderVotes();});
+
+async function submitVote(){
+  const name=document.getElementById('v-name').value.trim();
+  if(!name||!champion||!runnerUp)return;
+  const u=units;
+  await db.ref('votes').push({name,champion:champion.name,championFlag:champion.flag,runnerUp:runnerUp.name,runnerUpFlag:runnerUp.flag,units:u,ts:new Date().toLocaleString('ja-JP')});
+  champion=null;runnerUp=null;units=1;
+  document.getElementById('units-val').textContent='1';
+  document.getElementById('spg-val').textContent='500 SPG';
+  document.getElementById('preview').style.display='none';
+  document.getElementById('ru-section').style.display='none';
+  document.getElementById('units-section').style.display='none';
+  document.getElementById('submit-btn').disabled=true;
+  ALL.forEach(t=>{const el=document.getElementById('champ-'+t.name);if(el)el.className='team-card';});
+  showToast('✅ '+u+'口（'+(u*500).toLocaleString()+'SPG）投票完了！');
+}
+
+async function submitScore(){
+  const name=document.getElementById('s-name').value.trim();
+  if(!name)return showToast('⚠️ 苗字を入力してください');
+  await db.ref('scoreVotes').push({name,finalist1,finalist2,score1,score2,ts:new Date().toLocaleString('ja-JP')});
+  score1=0;score2=0;
+  document.getElementById('s1-val').textContent='0';
+  document.getElementById('s2-val').textContent='0';
+  showToast('✅ スコア予想を送信しました！');
+}
+
+async function toggleClose(){await db.ref('settings/isClosed').set(!isClosed);}
+async function toggleScoreClose(){await db.ref('settings/scoreClosed').set(!scoreClosed);}
+
+async function saveFinalists(){
+  const f1=document.getElementById('f1-input').value.trim();
+  const f2=document.getElementById('f2-input').value.trim();
+  if(!f1||!f2)return showToast('⚠️ 両チームを入力してください');
+  await db.ref('settings').update({finalist1:f1,finalist2:f2});
+  showToast('✅ 決勝カードを設定しました');
+}
+
+function showTab(t){
+  ['vote','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','score','admin'][i]===t)?' active':'');});
+}
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// Firebase listeners
+db.ref('settings/isClosed').on('value',snap=>{
+  isClosed=snap.val()===true;
+  document.getElementById('closed-msg').style.display=isClosed?'':'none';
+  document.getElementById('vote-form').style.display=isClosed?'none':'';
+  document.getElementById('close-btn').textContent=isClosed?'🔓 再開':'🔒 締め切る';
+  document.getElementById('close-btn').style.background=isClosed?'var(--green)':'var(--red)';
+});
+
+db.ref('settings/scoreClosed').on('value',snap=>{
+  scoreClosed=snap.val()===true;
+  document.getElementById('score-close-btn').textContent=scoreClosed?'🔓 再開':'🔒 締め切る';
+  document.getElementById('score-close-btn').style.background=scoreClosed?'var(--green)':'var(--red)';
+  updateScoreTab();
+});
+
+db.ref('settings/finalist1').on('value',snap=>{finalist1=snap.val()||'';updateScoreTab();updateFinalistAdmin();});
+db.ref('settings/finalist2').on('value',snap=>{finalist2=snap.val()||'';updateScoreTab();updateFinalistAdmin();});
+
+function updateFinalistAdmin(){
+  document.getElementById('f1-input').value=finalist1;
+  document.getElementById('f2-input').value=finalist2;
+  document.getElementById('finalist-btn').textContent=(finalist1&&finalist2)?'✅ 更新する':'決勝カードを設定';
+}
+
+function updateScoreTab(){
+  const has=finalist1&&finalist2;
+  document.getElementById('score-waiting').style.display=has?'none':'';
+  document.getElementById('score-closed-msg').style.display=(has&&scoreClosed)?'':'none';
+  document.getElementById('score-form').style.display=(has&&!scoreClosed)?'':'none';
+  if(has){
+    const f1t=ALL.find(t=>t.name===finalist1),f2t=ALL.find(t=>t.name===finalist2);
+    const f1s=(f1t?f1t.flag+' ':'')+finalist1;
+    const f2s=(f2t?f2t.flag+' ':'')+finalist2;
+    document.getElementById('final-teams-display').textContent=f1s+' vs '+f2s;
+    document.getElementById('sf1-name').textContent=f1s;
+    document.getElementById('sf2-name').textContent=f2s;
+  }
+}
+
+db.ref('votes').on('value',snap=>{
+  allVotes={};
+  if(snap.val()){
+    Object.entries(snap.val()).forEach(([k,v])=>{ allVotes[k]={...v,_key:k}; });
+  }
+  renderVotes();
+});
+db.ref('scoreVotes').on('value',snap=>{scoreVoteData=snap.val()||{};renderScoreVotes();});
+
+function renderVotes(){
+  const arr=Object.values(allVotes);
+  const totalUnits=arr.reduce((s,v)=>s+v.units,0);
+  const totalSPG=totalUnits*500;
+  document.getElementById('vote-summary').textContent=arr.length+'件 ／ '+totalUnits+'口 ／ '+totalSPG.toLocaleString()+'SPG';
+  if(totalSPG>0){
+    document.getElementById('pot-box').style.display='';
+    document.getElementById('pot-val').textContent=totalSPG.toLocaleString()+' SPG';
+  }
+  // Tally
+  const tally={};
+  arr.forEach(v=>{
+    const k=v.championFlag+v.champion+'優勝 / '+v.runnerUpFlag+v.runnerUp+'準優勝';
+    tally[k]=(tally[k]||0)+v.units;
+  });
+  const entries=Object.entries(tally).sort((a,b)=>b[1]-a[1]);
+  if(entries.length>0){
+    document.getElementById('tally-section').style.display='';
+    document.getElementById('tally-list').innerHTML=entries.map(([k,u])=>
+      `<div class="tally-row"><span>${k}</span><span class="spg">${u}口</span></div>`
+    ).join('');
+  }
+  // All votes
+  document.getElementById('all-votes-list').innerHTML=arr.length===0
+    ?'<p style="color:#555;font-size:13px;text-align:center;padding:12px 0">まだ投票なし</p>'
+    :[...arr].reverse().map(v=>
+      `<div class="vrow">
+        <div style="display:flex;justify-content:space-between">
+          <div class="vname">${v.name}</div><div class="spg">${v.units}口</div>
+        </div>
+        <div class="vdetail">${v.championFlag}${v.champion}優勝 / ${v.runnerUpFlag}${v.runnerUp}準優勝</div>
+        <div class="vts">${v.ts}</div>
+      </div>`
+    ).join('');
+  // My votes
+  const myName=document.getElementById('v-name').value.trim();
+  if(myName){
+    const mine=arr.filter(v=>v.name===myName);
+    document.getElementById('my-votes').innerHTML=mine.length===0?'':`
+      <div style="margin-top:24px">
+        <label class="lbl">あなたの投票履歴（${myName}）</label>
+        ${mine.map((v,i)=>`
+          <div class="vrow">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div><div class="vname">#${i+1} ${v.championFlag}${v.champion}優勝</div>
+              <div class="vdetail">準優勝 ${v.runnerUpFlag}${v.runnerUp}</div></div>
+              <div style="text-align:right">
+                <div class="spg">${v.units}口</div>
+                ${!isClosed?`<button class="del-btn" onclick="deleteVote('${v._key}')">取消</button>`:''}
+              </div>
+            </div><div class="vts">${v.ts}</div>
+          </div>`).join('')}
+        <div style="margin-top:10px;font-size:12px;color:#aaa">合計 <span class="spg">${mine.reduce((s,v)=>s+v.units,0)}口 / ${mine.reduce((s,v)=>s+v.units*500,0).toLocaleString()}SPG</span></div>
+      </div>`;
+  }
+}
+
+function renderScoreVotes(){
+  const arr=Object.values(scoreVoteData);
+  document.getElementById('score-summary').textContent=arr.length+'件';
+  document.getElementById('score-votes-list').innerHTML=arr.length===0
+    ?'<p style="color:#555;font-size:13px;text-align:center;padding:12px 0">まだ投票なし</p>'
+    :arr.map(v=>
+      `<div class="vrow">
+        <div style="display:flex;justify-content:space-between">
+          <div class="vname">${v.name}</div>
+          <div style="font-size:15px;font-weight:800;color:#7fe3b0">${v.score1} − ${v.score2}</div>
+        </div><div class="vts">${v.ts}</div>
+      </div>`
+    ).join('');
+}
+
+// 締め切り：2026-07-10 04:00 JST = 2026-07-09 19:00 UTC
+const DEADLINE = new Date('2026-07-09T19:00:00Z').getTime();
+
+function checkDeadline(){
+  const now = Date.now();
+  const over = now >= DEADLINE;
+  const banner = document.getElementById('deadline-banner');
+  if(over){
+    if(banner){ banner.className='deadline-expired'; banner.textContent='🔒 受付終了（7/10 04:00締め切り済み）'; }
+    // 自動締め切り（Firebaseにもセット）
+    if(!isClosed){ db.ref('settings/isClosed').set(true); }
+  } else {
+    const diff = DEADLINE - now;
+    const h = Math.floor(diff/3600000);
+    const m = Math.floor((diff%3600000)/60000);
+    if(banner) banner.textContent = '⏰ 締め切り：7/10（金）04:00まで　あと'+h+'時間'+m+'分';
+  }
+}
+setInterval(checkDeadline, 60000);
+checkDeadline();
+
+async function deleteVote(key){
+  if(!confirm('この投票を取り消しますか？')) return;
+  await db.ref('votes/'+key).remove();
+  showToast('🗑️ 投票を取り消しました');
+}
+
+renderTeams();
+</script>
+</body>
+</html>
