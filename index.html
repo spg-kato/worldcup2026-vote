@@ -89,6 +89,7 @@ input[type=text]:focus{border-color:var(--gold)}
 <div class="tabs">
   <button class="tab active" onclick="showTab('vote')">🎯 連単予想</button>
   <button class="tab" onclick="showTab('score')">📊 決勝スコア</button>
+  <button class="tab" onclick="showTab('result')">📊 結果</button>
   <button class="tab" onclick="showTab('admin')">⚙️ 管理</button>
 </div>
 
@@ -179,6 +180,26 @@ input[type=text]:focus{border-color:var(--gold)}
     </div>
     <button class="btn btn-green" onclick="submitScore()">スコアを予想する 📊</button>
   </div>
+</div>
+
+<!-- RESULT TAB -->
+<div id="tab-result" class="body" style="display:none">
+  <div class="pot" id="result-pot" style="display:none">
+    <div class="pot-num" id="result-pot-val">0 SPG</div>
+    <div class="pot-lbl">総ポット（参加者全員の掛け金合計）</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px" id="result-filter-wrap">
+    <button class="chip reset" onclick="setResultFilter(null)" id="rf_all" style="background:#EEF2F8;border-color:#D6DEEA;color:var(--text)">全て</button>
+    <button class="chip" onclick="setResultFilter('フランス')" id="rf_フランス">🇫🇷</button>
+    <button class="chip" onclick="setResultFilter('モロッコ')" id="rf_モロッコ">🇲🇦</button>
+    <button class="chip" onclick="setResultFilter('スペイン')" id="rf_スペイン">🇪🇸</button>
+    <button class="chip" onclick="setResultFilter('ベルギー')" id="rf_ベルギー">🇧🇪</button>
+    <button class="chip" onclick="setResultFilter('ノルウェー')" id="rf_ノルウェー">🇳🇴</button>
+    <button class="chip" onclick="setResultFilter('イングランド')" id="rf_イングランド">🏴󠁧󠁢󠁥󠁮󠁧󠁿</button>
+    <button class="chip" onclick="setResultFilter('アルゼンチン')" id="rf_アルゼンチン">🇦🇷</button>
+    <button class="chip" onclick="setResultFilter('スイス')" id="rf_スイス">🇨🇭</button>
+  </div>
+  <div id="result-list"></div>
 </div>
 
 <!-- ADMIN TAB -->
@@ -360,6 +381,56 @@ async function submitScore(){
   showToast('✅ スコア予想を送信しました！');
 }
 
+
+let resultFilter=null;
+function setResultFilter(team){
+  resultFilter=team;
+  document.querySelectorAll('[id^="rf_"]').forEach(el=>{
+    el.setAttribute('aria-pressed', (team===null&&el.id==='rf_all')||(el.id==='rf_'+team));
+  });
+  renderResult();
+}
+
+function renderResult(){
+  const arr=Object.values(allVotes);
+  const totalUnits=arr.reduce((s,v)=>s+v.units,0);
+  const totalSPG=totalUnits*500;
+  const pot=document.getElementById('result-pot');
+  if(totalSPG>0){
+    pot.style.display='';
+    document.getElementById('result-pot-val').textContent=totalSPG.toLocaleString()+' SPG';
+  }
+  // 組み合わせ別集計
+  const tally={};
+  arr.forEach(v=>{
+    const k=v.championFlag+v.champion+'|'+v.runnerUpFlag+v.runnerUp;
+    if(!tally[k])tally[k]={champ:v.champion,cf:v.championFlag,ru:v.runnerUp,rf:v.runnerUpFlag,units:0};
+    tally[k].units+=v.units;
+  });
+  let entries=Object.values(tally).sort((a,b)=>b.units-a.units);
+  if(resultFilter)entries=entries.filter(e=>e.champ===resultFilter||e.ru===resultFilter);
+  const el=document.getElementById('result-list');
+  if(entries.length===0){el.innerHTML='<div style="text-align:center;color:var(--sub);padding:32px">まだ投票なし</div>';return;}
+  let html='';
+  entries.forEach((e,i)=>{
+    const odds=totalUnits>0?(totalUnits/e.units).toFixed(1):'--';
+    const pct=totalUnits>0?Math.round(e.units/totalUnits*100):0;
+    html+=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${i+1}. ${e.cf}${e.champ} 優勝 / ${e.rf}${e.ru} 準優勝</div>
+        <div style="text-align:right;min-width:60px">
+          <div style="color:var(--gold);font-weight:800;font-size:14px">${e.units}口</div>
+          <div style="color:#1a7a4a;font-size:11px;font-weight:700">×${odds}倍</div>
+        </div>
+      </div>
+      <div style="margin-top:7px;background:var(--line);border-radius:4px;height:6px">
+        <div style="background:var(--gold);border-radius:4px;height:6px;width:${pct}%"></div>
+      </div>
+      <div style="font-size:10px;color:var(--sub);margin-top:3px">${pct}%（${e.units}/${totalUnits}口）</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
 function calcResult(){
   const champ=document.getElementById('result-champ').value.trim();
   const ru=document.getElementById('result-ru').value.trim();
@@ -409,8 +480,9 @@ async function saveFinalists(){
 }
 
 function showTab(t){
-  ['vote','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
-  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','score','admin'][i]===t)?' active':'');});
+  ['vote','score','result','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','score','result','admin'][i]===t)?' active':'');});
+  if(t==='result')renderResult();
 }
 
 function showToast(msg){
