@@ -552,18 +552,16 @@ function renderScoreVotes(){
 const DEADLINE = new Date('2026-07-09T19:00:00Z').getTime();
 
 function checkDeadline(){
-  const now = Date.now();
-  const over = now >= DEADLINE;
-  const banner = document.getElementById('deadline-banner');
+  const now=Date.now();
+  const over=now>=DEADLINE;
+  const banner=document.getElementById('deadline-banner');
   if(over){
-    if(banner){ banner.className='deadline-expired'; banner.textContent='🔒 受付終了（7/10 04:00締め切り済み）'; }
-    // 自動締め切り（Firebaseにもセット）
-    if(!isClosed){ db.ref('settings/isClosed').set(true); }
+    if(banner){banner.className='deadline-expired';banner.textContent='🔒 受付期間終了（7/10 04:00）';}
   } else {
-    const diff = DEADLINE - now;
-    const h = Math.floor(diff/3600000);
-    const m = Math.floor((diff%3600000)/60000);
-    if(banner) banner.textContent = '⏰ 締め切り：7/10（金）04:00まで　あと'+h+'時間'+m+'分';
+    const diff=DEADLINE-now;
+    const h=Math.floor(diff/3600000);
+    const m=Math.floor((diff%3600000)/60000);
+    if(banner)banner.textContent='⏰ 締め切り：7/10（金）04:00まで　あと'+h+'時間'+m+'分';
   }
 }
 setInterval(checkDeadline, 60000);
