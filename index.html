@@ -88,8 +88,8 @@ input[type=text]:focus{border-color:var(--gold)}
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('vote')">🎯 連単予想</button>
-  <button class="tab" onclick="showTab('score')">📊 決勝スコア</button>
   <button class="tab" onclick="showTab('result')">📊 結果</button>
+  <button class="tab" onclick="showTab('score')">🏆 決勝スコア</button>
   <button class="tab" onclick="showTab('admin')">⚙️ 管理</button>
 </div>
 
@@ -480,8 +480,8 @@ async function saveFinalists(){
 }
 
 function showTab(t){
-  ['vote','score','result','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
-  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','score','result','admin'][i]===t)?' active':'');});
+  ['vote','result','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','result','score','admin'][i]===t)?' active':'');});
   if(t==='result')renderResult();
 }
 
