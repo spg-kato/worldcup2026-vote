@@ -681,15 +681,16 @@ function renderVotes(){
   // All votes
   document.getElementById('all-votes-list').innerHTML=arr.length===0
     ?'<p style="color:#555;font-size:13px;text-align:center;padding:12px 0">まだ投票なし</p>'
-    :[...arr].reverse().map(v=>
-      `<div class="vrow" style="opacity:.5">
+    :[...arr].reverse().map(v=>{
+      const elim=remainingTeams.size>0&&(!remainingTeams.has(v.champion)||!remainingTeams.has(v.runnerUp));
+      return`<div class="vrow" style="${elim?'opacity:.4;text-decoration:line-through;':''}">
         <div style="display:flex;justify-content:space-between">
           <div class="vname">${v.name}</div><div class="spg">${v.units}口</div>
         </div>
-        <div class="vdetail">${v.championFlag}${v.champion}優勝 / ${v.runnerUpFlag}${v.runnerUp}準優勝</div>
+        <div class="vdetail">${v.championFlag}${v.champion}優勝 / ${v.runnerUpFlag}${v.runnerUp}準優勝${elim?' ❌':''}</div>
         <div class="vts">${v.ts}</div>
-      </div>`
-    ).join('');
+      </div>`;
+    }).join('');
   // My votes
   const myName=document.getElementById('v-name').value.trim();
   if(myName){
