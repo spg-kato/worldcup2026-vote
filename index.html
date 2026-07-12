@@ -101,7 +101,6 @@ input[type=text]:focus{border-color:var(--gold)}
     <p style="font-size:12px;color:#aaa;margin-top:6px">結果発表をお待ちください</p>
   </div>
   <div id="vote-form">
-    <div id="deadline-banner" class="deadline-box">⏰ 受付締め切り：7月10日（金）04:00まで</div>
     <div style="margin-bottom:20px">
       <label class="lbl">苗字</label>
       <input type="text" id="v-name" placeholder="例：田中">
@@ -158,27 +157,29 @@ input[type=text]:focus{border-color:var(--gold)}
       <label class="lbl">苗字</label>
       <input type="text" id="s-name" placeholder="例：田中">
     </div>
-    <label class="lbl">最終スコア予想（延長・PK込み）</label>
-    <div class="score-wrap">
-      <div class="score-team">
-        <div class="score-team-name" id="sf1-name">-</div>
-        <div class="counter">
-          <button class="cnt-btn" onclick="changeScore(1,-1)">−</button>
-          <div class="cnt-val" id="s1-val">0</div>
-          <button class="cnt-btn" onclick="changeScore(1,1)">＋</button>
-        </div>
-      </div>
-      <div class="score-sep">−</div>
-      <div class="score-team">
-        <div class="score-team-name" id="sf2-name">-</div>
-        <div class="counter">
-          <button class="cnt-btn" onclick="changeScore(2,-1)">−</button>
-          <div class="cnt-val" id="s2-val">0</div>
-          <button class="cnt-btn" onclick="changeScore(2,1)">＋</button>
-        </div>
-      </div>
+    <!-- 勝者選択 -->
+    <label class="lbl">優勝チームを選ぶ</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+      <button class="team-card" id="sw-1" onclick="selectScoreWinner(1)">
+        <div class="flag" id="sw-flag-1">-</div>
+        <div class="tname" id="sw-name-1">-</div>
+      </button>
+      <button class="team-card" id="sw-2" onclick="selectScoreWinner(2)">
+        <div class="flag" id="sw-flag-2">-</div>
+        <div class="tname" id="sw-name-2">-</div>
+      </button>
     </div>
-    <button class="btn btn-green" onclick="submitScore()">スコアを予想する 📊</button>
+    <!-- スコアパターン選択 -->
+    <div id="score-pattern-section" style="display:none">
+      <label class="lbl">スコアパターンを選ぶ</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="score-patterns"></div>
+    </div>
+    <!-- 確認 -->
+    <div id="score-preview" style="display:none" class="preview">
+      <div class="preview-lbl">📋 予想内容の確認</div>
+      <div id="score-preview-content"></div>
+    </div>
+    <button class="btn btn-green" id="score-submit-btn" onclick="submitScore()" disabled>予想する 📊</button>
   </div>
 </div>
 
@@ -205,6 +206,13 @@ input[type=text]:focus{border-color:var(--gold)}
 <!-- ADMIN TAB -->
 <div id="tab-admin" class="body" style="display:none">
   <div style="font-size:15px;font-weight:800;margin-bottom:16px">⚙️ 管理者パネル</div>
+  <!-- 残存チーム設定 -->
+  <div class="admin-card">
+    <h3 style="margin-bottom:8px">🏟️ 残存チーム設定</h3>
+    <div style="font-size:11px;color:var(--sub);margin-bottom:10px">敗退したチームのチェックを外してください。結果タブで外れ確定の組み合わせがグレーになります。</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px" id="remaining-checks"></div>
+    <button onclick="saveRemaining()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px">保存</button>
+  </div>
   <div class="admin-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
@@ -374,11 +382,16 @@ async function submitVote(){
 async function submitScore(){
   const name=document.getElementById('s-name').value.trim();
   if(!name)return showToast('⚠️ 苗字を入力してください');
-  await db.ref('scoreVotes').push({name,finalist1,finalist2,score1,score2,ts:new Date().toLocaleString('ja-JP')});
-  score1=0;score2=0;
-  document.getElementById('s1-val').textContent='0';
-  document.getElementById('s2-val').textContent='0';
-  showToast('✅ スコア予想を送信しました！');
+  if(!scoreWinner||!scorePattern)return showToast('⚠️ 優勝チームとスコアを選んでください');
+  const wName=scoreWinner===1?finalist1:finalist2;
+  await db.ref('scoreVotes').push({name,winner:wName,pattern:scorePattern,ts:new Date().toLocaleString('ja-JP')});
+  scoreWinner=null;scorePattern=null;
+  document.getElementById('sw-1').className='team-card';
+  document.getElementById('sw-2').className='team-card';
+  document.getElementById('score-pattern-section').style.display='none';
+  document.getElementById('score-preview').style.display='none';
+  document.getElementById('score-submit-btn').disabled=true;
+  showToast('✅ 予想を送信しました！');
 }
 
 
@@ -415,22 +428,63 @@ function renderResult(){
   entries.forEach((e,i)=>{
     const odds=totalUnits>0?(totalUnits/e.units).toFixed(1):'--';
     const pct=totalUnits>0?Math.round(e.units/totalUnits*100):0;
-    html+=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05)">
+    const eliminated=remainingTeams.size>0&&(!remainingTeams.has(e.champ)||!remainingTeams.has(e.ru));
+    const cardStyle=eliminated?'opacity:.4;':'';
+    const textStyle=eliminated?'text-decoration:line-through;color:var(--sub);':'color:var(--text);';
+    html+=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);${cardStyle}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">${i+1}. ${e.cf}${e.champ} 優勝 / ${e.rf}${e.ru} 準優勝</div>
+        <div style="font-size:13px;font-weight:700;${textStyle}">${i+1}. ${e.cf}${e.champ} 優勝 / ${e.rf}${e.ru} 準優勝${eliminated?' ❌':''}</div>
         <div style="text-align:right;min-width:60px">
           <div style="color:var(--gold);font-weight:800;font-size:14px">${e.units}口</div>
-          <div style="color:#1a7a4a;font-size:11px;font-weight:700">×${odds}倍</div>
+          ${!eliminated?`<div style="color:#1a7a4a;font-size:11px;font-weight:700">×${odds}倍</div>`:'<div style="font-size:11px;color:var(--sub)">外れ確定</div>'}
         </div>
       </div>
       <div style="margin-top:7px;background:var(--line);border-radius:4px;height:6px">
-        <div style="background:var(--gold);border-radius:4px;height:6px;width:${pct}%"></div>
+        <div style="background:${eliminated?'#ccc':'var(--gold)'};border-radius:4px;height:6px;width:${pct}%"></div>
       </div>
       <div style="font-size:10px;color:var(--sub);margin-top:3px">${pct}%（${e.units}/${totalUnits}口）</div>
     </div>`;
   });
   el.innerHTML=html;
 }
+
+let remainingTeams=new Set([...LEFT,...RIGHT].map(t=>t.name));
+
+async function loadRemaining(){
+  try{
+    const r=await db.ref('settings/remainingTeams').get();
+    if(r.val()){
+      remainingTeams=new Set(r.val());
+    }
+  }catch(e){}
+  renderRemainingChecks();
+}
+
+function renderRemainingChecks(){
+  const el=document.getElementById('remaining-checks');
+  if(!el)return;
+  el.innerHTML=[...LEFT,...RIGHT].map(t=>`
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px">
+      <input type="checkbox" ${remainingTeams.has(t.name)?'checked':''} onchange="toggleRemaining('${t.name}',this.checked)" style="width:16px;height:16px;cursor:pointer">
+      ${t.flag} ${t.name}
+    </label>`).join('');
+}
+
+function toggleRemaining(name,checked){
+  if(checked)remainingTeams.add(name); else remainingTeams.delete(name);
+}
+
+async function saveRemaining(){
+  await db.ref('settings/remainingTeams').set([...remainingTeams]);
+  showToast('✅ 残存チームを保存しました');
+  if(document.getElementById('tab-result').style.display!=='none')renderResult();
+}
+
+db.ref('settings/remainingTeams').on('value',snap=>{
+  if(snap.val())remainingTeams=new Set(snap.val());
+  renderRemainingChecks();
+  if(document.getElementById('tab-result').style.display!=='none')renderResult();
+});
 function calcResult(){
   const champ=document.getElementById('result-champ').value.trim();
   const ru=document.getElementById('result-ru').value.trim();
@@ -480,8 +534,8 @@ async function saveFinalists(){
 }
 
 function showTab(t){
-  ['vote','result','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
-  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['vote','result','score','admin'][i]===t)?' active':'');});
+  ['result','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['result','score','admin'][i]===t)?' active':'');});
   if(t==='result')renderResult();
 }
 
@@ -518,9 +572,29 @@ function updateFinalistAdmin(){
 
 function updateScoreTab(){
   const has=finalist1&&finalist2;
+  const now=Date.now();
+  const beforeOpen=now<SCORE_OPEN;
+  const afterDeadline=now>=SCORE_DEADLINE;
+  // 開放前
+  if(beforeOpen){
+    document.getElementById('score-waiting').style.display='';
+    document.getElementById('score-waiting').querySelector('h2').textContent='7/16（水）8:00に開放されます';
+    document.getElementById('score-waiting').querySelector('p').textContent='決勝カードが決まり次第受付開始';
+    document.getElementById('score-closed-msg').style.display='none';
+    document.getElementById('score-form').style.display='none';
+    return;
+  }
+  // 締め切り後（自動表示のみ、Firebase書き込みなし）
+  if(afterDeadline||scoreClosed){
+    document.getElementById('score-waiting').style.display='none';
+    document.getElementById('score-closed-msg').style.display='';
+    document.getElementById('score-closed-msg').querySelector('.msg').textContent=afterDeadline?'スコア予想の受付は終了しました':'スコア予想は締め切られました';
+    document.getElementById('score-form').style.display='none';
+    return;
+  }
   document.getElementById('score-waiting').style.display=has?'none':'';
-  document.getElementById('score-closed-msg').style.display=(has&&scoreClosed)?'':'none';
-  document.getElementById('score-form').style.display=(has&&!scoreClosed)?'':'none';
+  document.getElementById('score-closed-msg').style.display='none';
+  document.getElementById('score-form').style.display=has?'':'none';
   if(has){
     const f1t=ALL.find(t=>t.name===finalist1),f2t=ALL.find(t=>t.name===finalist2);
     const f1s=(f1t?f1t.flag+' ':'')+finalist1;
@@ -622,6 +696,9 @@ function renderScoreVotes(){
 
 // 締め切り：2026-07-10 04:00 JST = 2026-07-09 19:00 UTC
 const DEADLINE = new Date('2026-07-09T19:00:00Z').getTime();
+// スコア予想：7/16 8:00 JST開放 〜 7/20 3:00 JST締め切り
+const SCORE_OPEN = new Date('2026-07-15T23:00:00Z').getTime();
+const SCORE_DEADLINE = new Date('2026-07-19T18:00:00Z').getTime();
 
 function checkDeadline(){
   const now=Date.now();
