@@ -93,7 +93,7 @@ input[type=text]:focus{border-color:var(--gold)}
 </div>
 
 <!-- VOTE TAB -->
-<div id="tab-vote" class="body">
+<div id="tab-vote" class="body" style="display:none">
   <div id="closed-msg" style="display:none" class="closed-box">
     <div class="icon">🔒</div>
     <div class="msg">投票は締め切られました</div>
@@ -416,8 +416,9 @@ function renderResult(){
   const tally={};
   arr.forEach(v=>{
     const k=v.championFlag+v.champion+'|'+v.runnerUpFlag+v.runnerUp;
-    if(!tally[k])tally[k]={champ:v.champion,cf:v.championFlag,ru:v.runnerUp,rf:v.runnerUpFlag,units:0};
+    if(!tally[k])tally[k]={champ:v.champion,cf:v.championFlag,ru:v.runnerUp,rf:v.runnerUpFlag,units:0,voters:[]};
     tally[k].units+=v.units;
+    tally[k].voters.push({name:v.name,units:v.units});
   });
   let entries=Object.values(tally).sort((a,b)=>b.units-a.units);
   if(resultFilter)entries=entries.filter(e=>e.champ===resultFilter||e.ru===resultFilter);
@@ -431,8 +432,7 @@ function renderResult(){
     const cardStyle=eliminated?'opacity:.4;':'';
     const textStyle=eliminated?'text-decoration:line-through;color:var(--sub);':'color:var(--text);';
     // この組み合わせに投票した人リスト
-    const voters=arr.filter(v=>v.champion===e.champ&&v.runnerUp===e.ru);
-    const voterList=voters.map(v=>`${v.name}（${v.units}口）`).join('・');
+    const voterList=e.voters.map(v=>`${v.name}（${v.units}口）`).join('・');
     html+=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);${cardStyle}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:13px;font-weight:700;${textStyle}">${i+1}. ${e.cf}${e.champ} 優勝 / ${e.rf}${e.ru} 準優勝${eliminated?' ❌':''}</div>
