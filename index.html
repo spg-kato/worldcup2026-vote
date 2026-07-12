@@ -87,8 +87,7 @@ input[type=text]:focus{border-color:var(--gold)}
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('vote')">🎯 連単予想</button>
-  <button class="tab" onclick="showTab('result')">📊 結果</button>
+  <button class="tab active" onclick="showTab('result')">📊 結果</button>
   <button class="tab" onclick="showTab('score')">🏆 決勝スコア</button>
   <button class="tab" onclick="showTab('admin')">⚙️ 管理</button>
 </div>
@@ -211,7 +210,7 @@ input[type=text]:focus{border-color:var(--gold)}
     <h3 style="margin-bottom:8px">🏟️ 残存チーム設定</h3>
     <div style="font-size:11px;color:var(--sub);margin-bottom:10px">敗退したチームのチェックを外してください。結果タブで外れ確定の組み合わせがグレーになります。</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px" id="remaining-checks"></div>
-    <button onclick="saveRemaining()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px">保存</button>
+    <div style="display:flex;gap:8px"><button onclick="fetchBracketResults()" style="flex:1;padding:9px;border-radius:8px;border:none;background:#00924E;color:#fff;font-weight:700;cursor:pointer;font-size:13px">⚽ 自動取得</button><button onclick="saveRemaining()" style="flex:1;padding:9px;border-radius:8px;border:none;background:#1a3a6b;color:#fff;font-weight:700;cursor:pointer;font-size:13px">手動保存</button></div>
   </div>
   <div class="admin-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -450,6 +449,44 @@ function renderResult(){
 
 let remainingTeams=new Set([...LEFT,...RIGHT].map(t=>t.name));
 
+
+// チーム名英→日マッピング（8チームのみ）
+const EN2JP_VOTE={
+  'france':'フランス','morocco':'モロッコ',
+  'spain':'スペイン','belgium':'ベルギー',
+  'norway':'ノルウェー','england':'イングランド',
+  'argentina':'アルゼンチン','switzerland':'スイス'
+};
+const ALL_TEAM_NAMES=[...LEFT,...RIGHT].map(t=>t.name);
+
+async function fetchBracketResults(){
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json',{cache:'no-store'});
+    const data=await res.json();
+    const losers=new Set();
+    for(const m of data.matches){
+      const jp1=EN2JP_VOTE[m.team1.toLowerCase()];
+      const jp2=EN2JP_VOTE[m.team2.toLowerCase()];
+      if(!jp1||!jp2)continue;
+      const sc=m.score;
+      if(!sc)continue;
+      const final=sc.et&&sc.et.length>=2?sc.et:sc.ft;
+      if(!final||final.length<2)continue;
+      let loser=null;
+      if(final[0]>final[1])loser=jp2;
+      else if(final[0]<final[1])loser=jp1;
+      else if(sc.p&&sc.p.length>=2)loser=sc.p[0]>sc.p[1]?jp2:jp1;
+      if(loser)losers.add(loser);
+    }
+    const alive=new Set(ALL_TEAM_NAMES.filter(t=>!losers.has(t)));
+    if(alive.size>0&&alive.size<ALL_TEAM_NAMES.length){
+      remainingTeams=alive;
+      await db.ref('settings/remainingTeams').set([...remainingTeams]);
+      renderRemainingChecks();
+      renderResult();
+    }
+  }catch(e){console.log('openfootball fetch error:',e);}
+}
 async function loadRemaining(){
   try{
     const r=await db.ref('settings/remainingTeams').get();
