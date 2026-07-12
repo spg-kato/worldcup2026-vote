@@ -682,7 +682,7 @@ function renderVotes(){
   document.getElementById('all-votes-list').innerHTML=arr.length===0
     ?'<p style="color:#555;font-size:13px;text-align:center;padding:12px 0">まだ投票なし</p>'
     :[...arr].reverse().map(v=>
-      `<div class="vrow">
+      `<div class="vrow" style="opacity:.5">
         <div style="display:flex;justify-content:space-between">
           <div class="vname">${v.name}</div><div class="spg">${v.units}口</div>
         </div>
