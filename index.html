@@ -575,7 +575,7 @@ async function saveFinalists(){
 }
 
 function showTab(t){
-  ['result','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
+  ['vote','result','score','admin'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'':'none';});
   document.querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+((['result','score','admin'][i]===t)?' active':'');});
   if(t==='result')renderResult();
 }
@@ -652,6 +652,7 @@ db.ref('votes').on('value',snap=>{
     Object.entries(snap.val()).forEach(([k,v])=>{ allVotes[k]={...v,_key:k}; });
   }
   renderVotes();
+  if(document.getElementById('tab-result')&&document.getElementById('tab-result').style.display!=='none')renderResult();
 });
 db.ref('scoreVotes').on('value',snap=>{scoreVoteData=snap.val()||{};renderScoreVotes();});
 
