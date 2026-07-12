@@ -652,7 +652,7 @@ db.ref('votes').on('value',snap=>{
     Object.entries(snap.val()).forEach(([k,v])=>{ allVotes[k]={...v,_key:k}; });
   }
   renderVotes();
-  if(document.getElementById('tab-result')&&document.getElementById('tab-result').style.display!=='none')renderResult();
+  renderResult();
 });
 db.ref('scoreVotes').on('value',snap=>{scoreVoteData=snap.val()||{};renderScoreVotes();});
 
