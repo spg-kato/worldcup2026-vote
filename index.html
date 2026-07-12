@@ -430,6 +430,9 @@ function renderResult(){
     const eliminated=remainingTeams.size>0&&(!remainingTeams.has(e.champ)||!remainingTeams.has(e.ru));
     const cardStyle=eliminated?'opacity:.4;':'';
     const textStyle=eliminated?'text-decoration:line-through;color:var(--sub);':'color:var(--text);';
+    // この組み合わせに投票した人リスト
+    const voters=arr.filter(v=>v.champion===e.champ&&v.runnerUp===e.ru);
+    const voterList=voters.map(v=>`${v.name}（${v.units}口）`).join('・');
     html+=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);${cardStyle}">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:13px;font-weight:700;${textStyle}">${i+1}. ${e.cf}${e.champ} 優勝 / ${e.rf}${e.ru} 準優勝${eliminated?' ❌':''}</div>
@@ -442,6 +445,7 @@ function renderResult(){
         <div style="background:${eliminated?'#ccc':'var(--gold)'};border-radius:4px;height:6px;width:${pct}%"></div>
       </div>
       <div style="font-size:10px;color:var(--sub);margin-top:3px">${pct}%（${e.units}/${totalUnits}口）</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:6px;border-top:1px solid var(--line);padding-top:6px">${voterList}</div>
     </div>`;
   });
   el.innerHTML=html;
