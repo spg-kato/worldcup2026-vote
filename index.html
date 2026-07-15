@@ -378,6 +378,51 @@ async function submitVote(){
   showToast('✅ '+u+'口（'+(u*500).toLocaleString()+'SPG）投票完了！');
 }
 
+let scoreWinner=null,scorePattern=null;
+const SCORE_PATTERNS=['1-0','2-0','2-1','3-0','3-1','3-2','4点以上','延長・PK'];
+document.addEventListener('DOMContentLoaded',()=>{
+  const sn=document.getElementById('s-name');
+  if(sn)sn.addEventListener('input',updateScorePreview);
+});
+
+function selectScoreWinner(which){
+  scoreWinner=which;scorePattern=null;
+  document.getElementById('sw-1').className='team-card'+(which===1?' sel-champ':'');
+  document.getElementById('sw-2').className='team-card'+(which===2?' sel-champ':'');
+  document.getElementById('score-pattern-section').style.display='';
+  document.getElementById('score-patterns').innerHTML=SCORE_PATTERNS.map((p,i)=>`
+    <button class="team-card" onclick="selectScorePattern(${i})" id="sp-${i}" style="padding:14px 6px">
+      <div style="font-size:17px;font-weight:800;color:var(--text)">${p}</div>
+    </button>`).join('');
+  updateScorePreview();
+}
+
+function selectScorePattern(idx){
+  scorePattern=SCORE_PATTERNS[idx];
+  SCORE_PATTERNS.forEach((p,i)=>{
+    const el=document.getElementById('sp-'+i);
+    if(el)el.className='team-card'+(i===idx?' sel-ru':'');
+  });
+  updateScorePreview();
+}
+
+function updateScorePreview(){
+  const btn=document.getElementById('score-submit-btn');
+  const name=document.getElementById('s-name').value.trim();
+  if(!scoreWinner||!scorePattern){
+    btn.disabled=true;
+    document.getElementById('score-preview').style.display='none';
+    return;
+  }
+  const wName=scoreWinner===1?finalist1:finalist2;
+  const wt=ALL.find(t=>t.name===wName);
+  btn.disabled=!name;
+  document.getElementById('score-preview').style.display='';
+  document.getElementById('score-preview-content').innerHTML=`
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">優勝：${wt?wt.flag:''} ${wName}</div>
+    <div style="font-size:15px;font-weight:700">スコア：${scorePattern}</div>`;
+}
+
 async function submitScore(){
   const name=document.getElementById('s-name').value.trim();
   if(!name)return showToast('⚠️ 苗字を入力してください');
@@ -643,6 +688,8 @@ function updateScoreTab(){
     document.getElementById('final-teams-display').textContent=f1s+' vs '+f2s;
     document.getElementById('sf1-name').textContent=f1s;
     document.getElementById('sf2-name').textContent=f2s;
+    document.getElementById('sw-1').innerHTML=`<div class="flag">${f1t?f1t.flag:''}</div><div class="tname">${finalist1}</div>`;
+    document.getElementById('sw-2').innerHTML=`<div class="flag">${f2t?f2t.flag:''}</div><div class="tname">${finalist2}</div>`;
   }
 }
 
