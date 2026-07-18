@@ -173,6 +173,16 @@ input[type=text]:focus{border-color:var(--gold)}
       <label class="lbl">スコアパターンを選ぶ</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px" id="score-patterns"></div>
     </div>
+    <!-- 口数 -->
+    <div id="score-units-section" style="display:none;margin-bottom:20px">
+      <label class="lbl">口数（1口 = 500SPG）</label>
+      <div class="counter">
+        <button class="cnt-btn" onclick="changeScoreUnits(-1)">−</button>
+        <div class="cnt-val" id="score-units-val">1</div>
+        <button class="cnt-btn" onclick="changeScoreUnits(1)">＋</button>
+        <span class="spg" id="score-spg-val">500 SPG</span>
+      </div>
+    </div>
     <!-- 確認 -->
     <div id="score-preview" style="display:none" class="preview">
       <div class="preview-lbl">📋 予想内容の確認</div>
@@ -267,6 +277,11 @@ input[type=text]:focus{border-color:var(--gold)}
 <div class="toast" id="toast"></div>
 
 <script>
+// 締め切り：2026-07-10 04:00 JST = 2026-07-09 19:00 UTC
+const DEADLINE = new Date('2026-07-09T19:00:00Z').getTime();
+// スコア予想：7/16 6:30 JST開放 〜 7/20 3:00 JST締め切り
+const SCORE_OPEN = new Date('2026-07-15T21:30:00Z').getTime();
+const SCORE_DEADLINE = new Date('2026-07-19T18:00:00Z').getTime();
 const firebaseConfig={
   apiKey:"AIzaSyDckXu2L-Mg0mQwxf3ip8MtLbjvY4Rj1CI",
   authDomain:"worldcup2026vote.firebaseapp.com",
@@ -342,11 +357,6 @@ function changeUnits(d){
   updatePreview();
 }
 
-function changeScore(which,d){
-  if(which===1){score1=Math.max(0,score1+d);document.getElementById('s1-val').textContent=score1;}
-  else{score2=Math.max(0,score2+d);document.getElementById('s2-val').textContent=score2;}
-}
-
 function updatePreview(){
   if(!champion||!runnerUp)return;
   document.getElementById('preview').style.display='';
@@ -378,12 +388,19 @@ async function submitVote(){
   showToast('✅ '+u+'口（'+(u*500).toLocaleString()+'SPG）投票完了！');
 }
 
-let scoreWinner=null,scorePattern=null;
+let scoreWinner=null,scorePattern=null,scoreUnits=1;
 const SCORE_PATTERNS=['1-0','2-0','2-1','3-0','3-1','3-2','4点以上','延長・PK'];
-document.addEventListener('DOMContentLoaded',()=>{
+{
   const sn=document.getElementById('s-name');
   if(sn)sn.addEventListener('input',updateScorePreview);
-});
+}
+
+function changeScoreUnits(d){
+  scoreUnits=Math.max(1,scoreUnits+d);
+  document.getElementById('score-units-val').textContent=scoreUnits;
+  document.getElementById('score-spg-val').textContent=(scoreUnits*500).toLocaleString()+' SPG';
+  updateScorePreview();
+}
 
 function selectScoreWinner(which){
   scoreWinner=which;scorePattern=null;
@@ -403,6 +420,7 @@ function selectScorePattern(idx){
     const el=document.getElementById('sp-'+i);
     if(el)el.className='team-card'+(i===idx?' sel-ru':'');
   });
+  document.getElementById('score-units-section').style.display='';
   updateScorePreview();
 }
 
@@ -420,7 +438,8 @@ function updateScorePreview(){
   document.getElementById('score-preview').style.display='';
   document.getElementById('score-preview-content').innerHTML=`
     <div style="font-size:15px;font-weight:700;margin-bottom:4px">優勝：${wt?wt.flag:''} ${wName}</div>
-    <div style="font-size:15px;font-weight:700">スコア：${scorePattern}</div>`;
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">スコア：${scorePattern}</div>
+    <div style="font-size:12px;color:var(--sub)">${scoreUnits}口 ／ ${(scoreUnits*500).toLocaleString()} SPG</div>`;
 }
 
 async function submitScore(){
@@ -428,14 +447,18 @@ async function submitScore(){
   if(!name)return showToast('⚠️ 苗字を入力してください');
   if(!scoreWinner||!scorePattern)return showToast('⚠️ 優勝チームとスコアを選んでください');
   const wName=scoreWinner===1?finalist1:finalist2;
-  await db.ref('scoreVotes').push({name,winner:wName,pattern:scorePattern,ts:new Date().toLocaleString('ja-JP')});
-  scoreWinner=null;scorePattern=null;
+  const u=scoreUnits;
+  await db.ref('scoreVotes').push({name,winner:wName,pattern:scorePattern,units:u,ts:new Date().toLocaleString('ja-JP')});
+  scoreWinner=null;scorePattern=null;scoreUnits=1;
   document.getElementById('sw-1').className='team-card';
   document.getElementById('sw-2').className='team-card';
   document.getElementById('score-pattern-section').style.display='none';
+  document.getElementById('score-units-section').style.display='none';
+  document.getElementById('score-units-val').textContent='1';
+  document.getElementById('score-spg-val').textContent='500 SPG';
   document.getElementById('score-preview').style.display='none';
   document.getElementById('score-submit-btn').disabled=true;
-  showToast('✅ 予想を送信しました！');
+  showToast('✅ '+u+'口（'+(u*500).toLocaleString()+'SPG）予想を送信しました！');
 }
 
 
@@ -686,8 +709,6 @@ function updateScoreTab(){
     const f1s=(f1t?f1t.flag+' ':'')+finalist1;
     const f2s=(f2t?f2t.flag+' ':'')+finalist2;
     document.getElementById('final-teams-display').textContent=f1s+' vs '+f2s;
-    document.getElementById('sf1-name').textContent=f1s;
-    document.getElementById('sf2-name').textContent=f2s;
     document.getElementById('sw-1').innerHTML=`<div class="flag">${f1t?f1t.flag:''}</div><div class="tname">${finalist1}</div>`;
     document.getElementById('sw-2').innerHTML=`<div class="flag">${f2t?f2t.flag:''}</div><div class="tname">${finalist2}</div>`;
   }
@@ -771,24 +792,21 @@ function renderVotes(){
 
 function renderScoreVotes(){
   const arr=Object.values(scoreVoteData);
-  document.getElementById('score-summary').textContent=arr.length+'件';
+  const totalU=arr.reduce((s,v)=>s+(v.units||1),0);
+  document.getElementById('score-summary').textContent=arr.length+'件 ／ '+totalU+'口 ／ '+(totalU*500).toLocaleString()+'SPG';
   document.getElementById('score-votes-list').innerHTML=arr.length===0
     ?'<p style="color:#555;font-size:13px;text-align:center;padding:12px 0">まだ投票なし</p>'
-    :arr.map(v=>
+    :[...arr].reverse().map(v=>
       `<div class="vrow">
         <div style="display:flex;justify-content:space-between">
           <div class="vname">${v.name}</div>
-          <div style="font-size:15px;font-weight:800;color:#7fe3b0">${v.score1} − ${v.score2}</div>
-        </div><div class="vts">${v.ts}</div>
+          <div class="spg">${v.units||1}口</div>
+        </div>
+        <div class="vdetail">${v.winner||''} 優勝 ／ ${v.pattern||(v.score1+'-'+v.score2)}</div>
+        <div class="vts">${v.ts}</div>
       </div>`
     ).join('');
 }
-
-// 締め切り：2026-07-10 04:00 JST = 2026-07-09 19:00 UTC
-const DEADLINE = new Date('2026-07-09T19:00:00Z').getTime();
-// スコア予想：7/16 8:00 JST開放 〜 7/20 3:00 JST締め切り
-const SCORE_OPEN = new Date('2026-07-15T21:30:00Z').getTime();
-const SCORE_DEADLINE = new Date('2026-07-19T18:00:00Z').getTime();
 
 function checkDeadline(){
   const now=Date.now();
@@ -813,6 +831,7 @@ async function deleteVote(key){
 }
 
 renderTeams();
+updateScoreTab();
 </script>
 </body>
 </html>
